@@ -82,12 +82,39 @@
                 <div class="torrent-description">{{.Description}}</div>
                 {{end}}
                 <div class="torrent-actions">
-                    <a href="{{.MagnetLink}}" class="magnet-link" title="复制磁力链接">
-                        <i class="icon-magnet"></i> 磁力链接
-                    </a>
+                    <button class="copy-magnet" data-magnetlink="{{.MagnetLink}}">
+                        <i class="icon-magnet"></i> 复制磁力链接
+                    </button>
                     <span class="info-hash">Hash: {{.InfoHash}}</span>
                     <span class="file-count">文件数: {{.FileCount}}</span>
+                    {{if .Files}}
+                    <button class="toggle-files" data-id="file-{{.InfoHash}}">
+                        <span class="show-text">展开文件</span>
+                        <span class="hide-text" style="display:none">收起文件</span>
+                    </button>
+                    {{end}}
                 </div>
+
+                {{if .Files}}
+                <div class="file-list" id="file-{{.InfoHash}}" style="display:none">
+                    <table class="files-table">
+                        <thead>
+                        <tr>
+                            <th>文件名</th>
+                            <th>大小</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {{range .Files}}
+                        <tr>
+                            <td>{{index .Path 0}}</td>
+                            <td>{{formatSize .Length}}</td>
+                        </tr>
+                        {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{end}}
             </div>
             {{end}}
         </div>
@@ -114,4 +141,104 @@
         {{end}}
     </div>
 </div>
+
+<script>
+    // 更新过滤器
+    function updateFilter(name, value) {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // 更新对应的参数
+        if (value) {
+            urlParams.set(name, value);
+        } else {
+            urlParams.delete(name);
+        }
+
+        // 重置页码
+        if (name !== 'page') {
+            urlParams.delete('page');
+        }
+
+        // 重定向到新URL
+        window.location.href = window.location.pathname + '?' + urlParams.toString();
+    }
+
+    // 复制磁力链接和文件列表展开/收起功能
+    document.addEventListener('DOMContentLoaded', function() {
+        // 复制磁力链接功能
+        const copyButtons = document.querySelectorAll('.copy-magnet');
+        copyButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const magnetLink = this.getAttribute('data-magnetlink');
+                navigator.clipboard.writeText(magnetLink)
+                    .then(() => {
+                        // 显示复制成功提示
+                        const originalText = this.innerHTML;
+                        this.innerHTML = '<i class="icon-check"></i> 已复制';
+                        this.classList.add('copied');
+
+                        // 3秒后恢复原状
+                        setTimeout(() => {
+                            this.innerHTML = originalText;
+                            this.classList.remove('copied');
+                        }, 3000);
+                    })
+                    .catch(err => {
+                        console.error('复制失败:', err);
+                        // 如果Clipboard API不可用，使用传统方法
+                        fallbackCopy(magnetLink);
+                    });
+            });
+        });
+
+        // 展开/收起文件列表功能
+        const toggleButtons = document.querySelectorAll('.toggle-files');
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const fileListId = this.getAttribute('data-id');
+                const fileList = document.getElementById(fileListId);
+                const showText = this.querySelector('.show-text');
+                const hideText = this.querySelector('.hide-text');
+
+                if (fileList.style.display === 'none') {
+                    // 展开文件列表
+                    fileList.style.display = 'block';
+                    showText.style.display = 'none';
+                    hideText.style.display = 'inline';
+                    this.classList.add('expanded');
+                } else {
+                    // 收起文件列表
+                    fileList.style.display = 'none';
+                    showText.style.display = 'inline';
+                    hideText.style.display = 'none';
+                    this.classList.remove('expanded');
+                }
+            });
+        });
+
+        // 备用复制方法（当Clipboard API不可用时）
+        function fallbackCopy(text) {
+            // 创建一个临时的文本区域
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    alert('磁力链接已复制到剪贴板');
+                } else {
+                    alert('复制失败，请手动复制');
+                }
+            } catch (err) {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制');
+            }
+
+            document.body.removeChild(textArea);
+        }
+    });
+</script>
 {{end}}

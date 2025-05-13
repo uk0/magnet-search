@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
-	"magnet-search/internal/models"
+	"magnet-search/internal/model"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -121,11 +121,11 @@ func UpdateTorrentsTable(db *DB) error {
 }
 
 // AddTorrent 添加新种子
-func AddTorrent(db *DB, torrent *models.Torrent) error {
+func AddTorrent(db *DB, torrent *model.Torrent) error {
 	// 先检查是否已存在
 	ctx, cancel := createContext()
 	defer cancel()
-	var existingTorrent models.Torrent
+	var existingTorrent model.Torrent
 	err := db.Torrents.FindOne(ctx, bson.M{"info_hash": torrent.InfoHash}).Decode(&existingTorrent)
 
 	// 如果已存在，则更新热度
@@ -171,7 +171,7 @@ func InfoHashExists(db *DB, infoHash []byte) (bool, error) {
 }
 
 // SearchTorrents 搜索种子
-func SearchTorrents(db *DB, keyword string, category string, sortBy string, page, pageSize int) (*models.SearchResult, error) {
+func SearchTorrents(db *DB, keyword string, category string, sortBy string, page, pageSize int) (*model.SearchResult, error) {
 	// 构建查询条件
 	ctx, cancel := createContext()
 	defer cancel()
@@ -235,13 +235,13 @@ func SearchTorrents(db *DB, keyword string, category string, sortBy string, page
 	}
 
 	// 解析结果
-	var torrents []models.Torrent
+	var torrents []model.Torrent
 	if err := cursor.All(ctx, &torrents); err != nil {
 		return nil, err
 	}
 
 	// 修改这一行
-	return &models.SearchResult{
+	return &model.SearchResult{
 		torrents,
 		int(total),
 		page,
@@ -251,7 +251,7 @@ func SearchTorrents(db *DB, keyword string, category string, sortBy string, page
 }
 
 // GetLatestTorrents 获取最新种子
-func GetLatestTorrents(db *DB, limit int) ([]models.Torrent, error) {
+func GetLatestTorrents(db *DB, limit int) ([]model.Torrent, error) {
 	ctx, cancel := createContext()
 	defer cancel()
 	options := options.Find().
@@ -263,7 +263,7 @@ func GetLatestTorrents(db *DB, limit int) ([]models.Torrent, error) {
 		return nil, err
 	}
 
-	var torrents []models.Torrent
+	var torrents []model.Torrent
 	if err := cursor.All(ctx, &torrents); err != nil {
 		return nil, err
 	}
@@ -273,7 +273,7 @@ func GetLatestTorrents(db *DB, limit int) ([]models.Torrent, error) {
 }
 
 // GetPopularTorrents 获取热门种子
-func GetPopularTorrents(db *DB, limit int) ([]models.Torrent, error) {
+func GetPopularTorrents(db *DB, limit int) ([]model.Torrent, error) {
 	ctx, cancel := createContext()
 	defer cancel()
 	options := options.Find().
@@ -285,7 +285,7 @@ func GetPopularTorrents(db *DB, limit int) ([]models.Torrent, error) {
 		return nil, err
 	}
 
-	var torrents []models.Torrent
+	var torrents []model.Torrent
 	if err := cursor.All(ctx, &torrents); err != nil {
 		return nil, err
 	}
@@ -296,7 +296,7 @@ func GetPopularTorrents(db *DB, limit int) ([]models.Torrent, error) {
 }
 
 // GetCategories 获取所有分类及其数量
-func GetCategories(db *DB) ([]models.CategoryCount, error) {
+func GetCategories(db *DB) ([]model.CategoryCount, error) {
 	ctx, cancel := createContext()
 	defer cancel()
 	pipeline := mongo.Pipeline{
@@ -325,9 +325,9 @@ func GetCategories(db *DB) ([]models.CategoryCount, error) {
 		return nil, err
 	}
 
-	categories := make([]models.CategoryCount, 0, len(results))
+	categories := make([]model.CategoryCount, 0, len(results))
 	for _, result := range results {
-		categories = append(categories, models.CategoryCount{
+		categories = append(categories, model.CategoryCount{
 			Category: result.ID,
 			Count:    result.Count,
 		})
@@ -340,10 +340,10 @@ func GetCategories(db *DB) ([]models.CategoryCount, error) {
 }
 
 // GetTorrentByInfoHash 通过InfoHash获取种子
-func GetTorrentByInfoHash(db *DB, infoHash string) (*models.Torrent, error) {
+func GetTorrentByInfoHash(db *DB, infoHash string) (*model.Torrent, error) {
 	ctx, cancel := createContext()
 	defer cancel()
-	var torrent models.Torrent
+	var torrent model.Torrent
 	err := db.Torrents.FindOne(ctx, bson.M{"info_hash": infoHash}).Decode(&torrent)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {

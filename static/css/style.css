@@ -5,11 +5,18 @@
     box-sizing: border-box;
 }
 
+html, body {
+    height: 100%;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
     color: #333;
     background-color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 a {
@@ -25,6 +32,7 @@ a:hover {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
+    flex: 1 0 auto; /* 确保内容区域占据可用空间 */
 }
 
 /* 头部样式 */
@@ -71,17 +79,18 @@ nav ul li a:hover {
 
 /* 页脚样式 */
 footer {
-    background-color: #333;
-    color: #fff;
+    background-color: #f5f5f5;
+    border-top: 1px solid #e0e0e0;
     padding: 20px 0;
-    margin-top: 40px;
-    text-align: center;
+    flex-shrink: 0; /* 防止页脚被压缩 */
+    width: 100%;
+    margin-top: auto; /* 将页脚推到底部 */
 }
 
 .footer-container {
     max-width: 1200px;
     padding: 0 20px;
-    margin-bottom: 1px;
+    margin: 0 auto;
 }
 
 /* 搜索表单样式 */
@@ -97,7 +106,7 @@ footer {
 
 .search-form {
     display: flex;
-    max-width: 600px;
+    max-width: 700px;
     margin: 0 auto;
 }
 
@@ -108,16 +117,22 @@ footer {
     border-radius: 4px 0 0 4px;
     font-size: 16px;
     outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-form input[type="text"]:focus {
+    border-color: #1a73e8;
 }
 
 .search-form button {
-    padding: 12px 20px;
+    padding: 12px 25px;
     background-color: #1a73e8;
     color: #fff;
     border: none;
     border-radius: 0 4px 4px 0;
     cursor: pointer;
     font-size: 16px;
+    transition: background-color 0.2s;
 }
 
 .search-form button:hover {
@@ -125,7 +140,7 @@ footer {
 }
 
 /* 分类样式 */
-.categories {
+.categories, .hot-torrents, .recent-torrents {
     margin: 40px 0;
     background-color: #fff;
     padding: 20px;
@@ -133,7 +148,7 @@ footer {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.categories h2 {
+.categories h2, .hot-torrents h2, .recent-torrents h2 {
     margin-bottom: 15px;
     color: #333;
     border-bottom: 1px solid #eee;
@@ -158,6 +173,7 @@ footer {
 
 .category-item:hover {
     background-color: #e3f0ff;
+    text-decoration: none;
 }
 
 .category-count {
@@ -167,22 +183,6 @@ footer {
     color: #fff;
     padding: 2px 6px;
     border-radius: 10px;
-}
-
-/* 最新资源样式 */
-.recent-torrents {
-    margin: 40px 0;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.recent-torrents h2 {
-    margin-bottom: 15px;
-    color: #333;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
 }
 
 /* 种子列表样式 */
@@ -197,16 +197,22 @@ footer {
     border-radius: 8px;
     padding: 15px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
+    transition: all 0.2s;
+    margin-bottom: 15px;
+    overflow: visible;
+    word-wrap: break-word;
 }
 
 .torrent-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    border-color: #bbb;
 }
 
 .torrent-title {
     margin-bottom: 10px;
+    width: 100%;
+    overflow: hidden;
 }
 
 .torrent-title a {
@@ -215,9 +221,13 @@ footer {
     color: #1a73e8;
     text-decoration: none;
     display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.torrent-title a:hover {
+    color: #0d61cb;
+    text-decoration: none;
 }
 
 .torrent-info {
@@ -227,13 +237,15 @@ footer {
     margin-bottom: 10px;
     font-size: 14px;
     color: #666;
+    width: 100%;
 }
 
 .torrent-category {
-    background-color: #f0f7ff;
-    color: #1a73e8;
-    padding: 2px 8px;
+    background-color: #1a73e8;
+    color: #fff;
+    padding: 3px 8px;
     border-radius: 4px;
+    font-size: 12px;
 }
 
 .torrent-seeds {
@@ -244,10 +256,16 @@ footer {
     color: #ff9800;
 }
 
+.torrent-heat {
+    color: #fb8c00;
+    font-weight: bold;
+}
+
 .torrent-description {
-    margin-top: 10px;
+    margin: 10px 0;
     font-size: 14px;
-    color: #666;
+    color: #555;
+    line-height: 1.5;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -255,46 +273,109 @@ footer {
     -webkit-box-orient: vertical;
 }
 
+/* 种子操作区域 */
 .torrent-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
-    margin-top: 10px;
+    gap: 12px;
+    margin-top: 12px;
     font-size: 14px;
     align-items: center;
+    width: 100%;
 }
 
-.magnet-link {
-    background-color: #1a73e8;
-    color: #fff;
-    padding: 5px 10px;
-    border-radius: 4px;
+.copy-magnet, .toggle-files {
     display: inline-flex;
     align-items: center;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.magnet-link:hover {
-    background-color: #0d61cb;
-    text-decoration: none;
+.copy-magnet {
+    background-color: #f1f7fc;
+    border: 1px solid #c8e1f9;
+    color: #2980b9;
 }
 
-.icon-magnet {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
+.copy-magnet:hover {
+    background-color: #e3f2fd;
+    border-color: #90caf9;
+}
+
+.copy-magnet.copied {
+    background-color: #d4edda;
+    color: #155724;
+    border-color: #c3e6cb;
+}
+
+.toggle-files {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    color: #555;
+}
+
+.toggle-files:hover {
+    background-color: #e9e9e9;
+}
+
+.toggle-files.expanded {
+    background-color: #e2e3e5;
+    border-color: #ccc;
+}
+
+.icon-magnet, .icon-check {
     margin-right: 5px;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M17 4.5v9c0 3.6-2.9 6.5-6.5 6.5S4 17.1 4 13.5v-2H2v2c0 4.7 3.8 8.5 8.5 8.5S19 18.2 19 13.5v-9H17z"/><path d="M8 4.5v9c0 1.4 1.1 2.5 2.5 2.5s2.5-1.1 2.5-2.5v-9H8z"/></svg>');
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: contain;
 }
 
 .info-hash, .file-count {
     color: #777;
+    font-size: 13px;
     font-family: monospace;
 }
 
-/* 搜索结果样式 */
+/* 文件列表样式 */
+.file-list {
+    margin-top: 15px;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.files-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.files-table th {
+    padding: 8px 10px;
+    background-color: #eaecef;
+    text-align: left;
+    font-weight: 600;
+    color: #444;
+    border-bottom: 2px solid #ddd;
+}
+
+.files-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e0e0e0;
+    color: #333;
+}
+
+.files-table tr:last-child td {
+    border-bottom: none;
+}
+
+.files-table tr:hover td {
+    background-color: #f1f1f1;
+}
+
+/* 搜索结果页面样式 */
 .search-header {
     margin-bottom: 30px;
 }
@@ -313,12 +394,17 @@ footer {
 .search-filters h2 {
     margin-bottom: 15px;
     font-size: 20px;
+    color: #333;
 }
 
 .filter-options {
     display: flex;
     flex-wrap: wrap;
     gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
 }
 
 .filter-group {
@@ -327,17 +413,17 @@ footer {
 }
 
 .filter-group label {
-    margin-right: 5px;
-    font-size: 14px;
-    color: #666;
+    margin-right: 8px;
+    font-weight: bold;
+    color: #555;
 }
 
 .filter-group select {
-    padding: 6px 10px;
+    padding: 8px 12px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    outline: none;
-    font-size: 14px;
+    background-color: white;
+    cursor: pointer;
 }
 
 .result-stats {
@@ -354,6 +440,11 @@ footer {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.no-results p {
+    color: #666;
+    font-size: 18px;
+}
+
 /* 分页样式 */
 .pagination {
     display: flex;
@@ -363,170 +454,28 @@ footer {
 }
 
 .pagination-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    background-color: #fff;
+    display: inline-block;
+    padding: 8px 12px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    color: #333;
-    font-size: 14px;
+    color: #555;
     text-decoration: none;
-    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .pagination-item:hover {
     background-color: #f5f5f5;
+    border-color: #ccc;
     text-decoration: none;
 }
 
 .pagination-item.active {
     background-color: #1a73e8;
-    color: #fff;
     border-color: #1a73e8;
+    color: white;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-    .search-form {
-        flex-direction: column;
-    }
-
-    .search-form input[type="text"] {
-        border-radius: 4px 4px 0 0;
-    }
-
-    .search-form button {
-        border-radius: 0 0 4px 4px;
-    }
-
-    .filter-options {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .filter-group {
-        width: 100%;
-    }
-
-    .filter-group select {
-        flex: 1;
-    }
-
-    .torrent-actions {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-    }
-}
-
-/* 添加/修改以下CSS样式规则 */
-
-/* 卡片样式调整 */
-.torrent-item {
-    background-color: #fff;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
-    margin-bottom: 15px;
-    overflow: visible; /* 防止内容被截断 */
-    height: auto; /* 允许高度自适应 */
-    word-wrap: break-word; /* 允许长文本换行 */
-}
-
-/* 标题样式调整 */
-.torrent-title {
-    margin-bottom: 10px;
-    width: 100%;
-    overflow: hidden;
-}
-
-.torrent-title a {
-    font-weight: 600;
-    font-size: 16px;
-    color: #1a73e8;
-    text-decoration: none;
-    display: block;
-    word-break: break-word; /* 允许标题在任何点换行 */
-    line-height: 1.4;
-}
-
-/* 信息展示样式调整 */
-.torrent-info {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 10px;
-    font-size: 13px;
-    color: #666;
-    width: 100%;
-}
-
-/* 热门资源和最新资源部分 */
-.hot-torrents,
-.recent-torrents {
-    margin: 40px 0;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    overflow: visible;
-}
-
-/* 响应式布局调整 */
-@media (max-width: 768px) {
-    .torrent-info {
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .torrent-actions {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-
-    .torrent-title a {
-        font-size: 15px;
-    }
-}
-
-/* 增加高亮效果 */
-.torrent-heat {
-    color: #fb8c00;
-    font-weight: bold;
-}
-
-/* 确保内容部分可滚动 */
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-    overflow: visible;
-}
-
-/* 调整卡片内边距 */
-.torrent-description {
-    margin: 8px 0;
-    font-size: 14px;
-    color: #666;
-    line-height: 1.4;
-}
-
-/* 确保卡片底部操作按钮行显示完整 */
-.torrent-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-top: 10px;
-    font-size: 13px;
-    width: 100%;
-}
-
-/* 添加管理面板相关样式 */
+/* 管理面板相关样式 */
 .admin-panel {
     background-color: #fff;
     border-radius: 8px;
@@ -632,4 +581,48 @@ footer {
     font-size: 24px;
     font-weight: 600;
     color: #1a73e8;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .search-form {
+        flex-direction: column;
+    }
+
+    .search-form input[type="text"] {
+        border-radius: 4px 4px 0 0;
+    }
+
+    .search-form button {
+        border-radius: 0 0 4px 4px;
+    }
+
+    .filter-options {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .filter-group select {
+        width: 100%;
+    }
+
+    .torrent-info {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .torrent-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .copy-magnet, .toggle-files {
+        width: 100%;
+        justify-content: center;
+    }
 }

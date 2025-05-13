@@ -83,43 +83,33 @@ func NewStandardConfig() *Config {
 		K:           8,
 		KBucketSize: 8,
 		Network:     "udp4",
-		Address:     ":6881",
+		Address:     ":26881",
 		PrimeNodes: []string{
 			"router.bittorrent.com:6881",
 			"dht.transmissionbt.com:6881",
 			"router.utorrent.com:6881",
-			"dht.libtorrent.org:25401",
-			"dht.aelitis.com:6881",
-			"router.silotis.us:6881",    // 新增的活跃节点
-			"dht.monitorrent.com:6881",  // 新增的活跃节点
-			"dht.bootjav.com:6881",      // 亚洲区域活跃节点
-			"router.bitcomet.com:6881",  // BitComet客户端DHT节点，国内使用较多
-			"dht.cyberyon.com:6881",     // 亚太地区活跃节点
-			"dht.bluedot.org:6881",      // 多区域连通性良好
-			"router.magnets.im:6881",    // 磁力链相关资源节点
-			"dht.eastasia.one:6881",     // 东亚优化节点
-			"router.c-base.org:6881",    // 稳定的欧洲节点，但对中国连通性较好
-			"dht.pacific-node.com:6881", // 太平洋区域节点，对亚洲友好
-			"dht.acgtracker.com:6881",   // 动漫资源相关，亚洲连通性好
-			"router.asiandht.com:6881",  // 亚洲优化节点
-			// 特殊活跃种子的节点
-			"87.98.162.88:6881",   // 一个已知活跃的节点
-			"82.221.103.244:6881", // 一个已知活跃的节点
-			"213.239.217.10:6881", // 一个已知活跃的节点
+			"dht.monitorrent.com:6881",    // 新增的活跃节点
+			"router.bitcomet.com:6881",    // BitComet客户端DHT节点，国内使用较多
+			"router.bittorrent.com:6881",  // 磁力链相关资源节点
+			"dht.transmissionbt.com:6881", // 东亚优化节点
+			"router.c-base.org:6881",      // 稳定的欧洲节点，但对中国连通性较好
+			"dht.pacific-node.com:6881",   // 太平洋区域节点，对亚洲友好
+			"dht.acgtracker.com:6881",     // 动漫资源相关，亚洲连通性好
+			"router.asiandht.com:6881",    // 亚洲优化节点
 		},
 		NodeExpriedAfter:     time.Duration(time.Minute * 15),
 		KBucketExpiredAfter:  time.Duration(time.Minute * 15),
 		CheckKBucketPeriod:   time.Duration(time.Second * 30),
 		TokenExpiredAfter:    time.Duration(time.Minute * 10),
 		MaxTransactionCursor: math.MaxUint32,
-		MaxNodes:             5000,
+		MaxNodes:             6666,
 		BlockedIPs:           make([]string, 0),
 		BlackListMaxSize:     65536,
 		Try:                  2,
 		Mode:                 StandardMode,
 		PacketJobLimit:       1024,
 		PacketWorkerLimit:    256,
-		RefreshNodeNum:       16,
+		RefreshNodeNum:       8,
 	}
 }
 
@@ -172,7 +162,54 @@ type DHT struct {
 	closing chan struct{}
 }
 
-// initNAT 初始化NAT穿透
+// isPublicIP 检查IP是否为公网IP
+func isPublicIP(ip net.IP) bool {
+	// 检查是否为回环地址
+	if ip.IsLoopback() {
+		return false
+	}
+
+	// 检查是否为私有IP
+	if ip4 := ip.To4(); ip4 != nil {
+		// IPv4私有地址范围检查
+		switch true {
+		case ip4[0] == 10: // 10.0.0.0/8
+			return false
+		case ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31: // 172.16.0.0/12
+			return false
+		case ip4[0] == 192 && ip4[1] == 168: // 192.168.0.0/16
+			return false
+		case ip4[0] == 169 && ip4[1] == 254: // 169.254.0.0/16
+			return false
+		case ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127: // 100.64.0.0/10 (CGNAT)
+			return false
+		default:
+			return true
+		}
+	}
+
+	// IPv6私有地址范围检查
+	if ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return false
+	}
+
+	return true
+}
+
+// getOutboundIP 获取本机用于出站连接的IP
+func getOutboundIP() (net.IP, error) {
+	// 尝试连接到一个公共IP (谷歌DNS)，不需要建立实际连接
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP, nil
+}
+
+// initNAT 初始化NAT穿透，如果是公网IP则跳过
 func (dht *DHT) initNAT(ctx context.Context) error {
 	// 解析本地地址，获取端口
 	_, portStr, err := net.SplitHostPort(dht.Address)
@@ -183,6 +220,21 @@ func (dht *DHT) initNAT(ctx context.Context) error {
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return fmt.Errorf("端口格式错误: %v", err)
+	}
+
+	// 获取出站IP地址
+	outboundIP, err := getOutboundIP()
+	if err != nil {
+		log.Printf("获取出站IP失败: %v, 将假设需要NAT穿透", err)
+	} else {
+		// 检查是否为公网IP
+		if isPublicIP(outboundIP) {
+			log.Printf("检测到公网IP: %s, 跳过NAT穿透", outboundIP.String())
+			dht.externalIP = outboundIP
+			dht.externalPort = port
+			return nil
+		}
+		log.Printf("检测到私有IP: %s, 将尝试NAT穿透", outboundIP.String())
 	}
 
 	// 创建NAT穿透实例
@@ -413,6 +465,7 @@ func (dht *DHT) init() {
 	}
 
 	listener, err := net.ListenPacket(dht.Network, dht.Address)
+	log.Printf("监听地址: Network type :%s  address: %s \n", dht.Network, dht.Address)
 	if err != nil {
 		panic(err)
 	}
@@ -459,6 +512,7 @@ func (dht *DHT) join() {
 	for _, addr := range dht.PrimeNodes {
 		raddr, err := net.ResolveUDPAddr(dht.Network, addr)
 		if err != nil {
+			log.Printf("解析引导节点地址失败: %s, 错误: %v", addr, err)
 			continue
 		}
 
@@ -467,6 +521,7 @@ func (dht *DHT) join() {
 			&node{addr: raddr},
 			dht.node.id.RawString(),
 		)
+		log.Printf("连接到引导节点请求：【find_node】: %s", addr)
 	}
 }
 
@@ -477,13 +532,13 @@ func (dht *DHT) listen() {
 		for {
 			select {
 			case <-dht.closing:
+				log.Println("关闭监听...")
 				return
 			default:
 				n, raddr, err := dht.conn.ReadFromUDP(buff)
 				if err != nil {
 					continue
 				}
-
 				dht.packets <- packet{buff[:n], raddr}
 			}
 		}
@@ -574,6 +629,8 @@ func (dht *DHT) Run() {
 				if err != nil {
 					log.Printf("刷新NAT映射失败: %v", err)
 				}
+			} else {
+				log.Println("❌NAT穿透未启用，跳过刷新")
 			}
 		case <-dht.closing:
 			return

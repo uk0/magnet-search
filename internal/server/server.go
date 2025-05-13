@@ -7,7 +7,7 @@ import (
 	"log"
 	"magnet-search/internal/crawler"
 	"magnet-search/internal/database"
-	"magnet-search/internal/models"
+	"magnet-search/internal/model"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -115,7 +115,7 @@ func Run(port string, db *database.DB, crawler *crawler.Crawler) error {
 	server.templates = templates
 
 	// 设置路由
-	http.HandleFunc("/", server.indexHandler)
+	http.HandleFunc("/", server.searchHandler)
 	http.HandleFunc("/search", server.searchHandler)
 
 	// 添加管理界面
@@ -321,12 +321,8 @@ func (s *Server) dailyStatsAPIHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// indexHandler 处理首页请求
+// TODO indexHandler 处理首页请求
 func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
 
 	// 获取最近添加的种子
 	recentTorrents, err := database.GetLatestTorrents(s.db, 20)
@@ -356,15 +352,18 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
 		len(categories), len(hotTorrents), len(recentTorrents))
 
 	data := map[string]interface{}{
-		"Title":          "磁力搜索引擎",
+		"Title":          "磁力搜索引擎v0.0.1",
 		"RecentTorrents": recentTorrents,
 		"HotTorrents":    hotTorrents,
 		"Categories":     categories,
 	}
 
-	if err := s.templates.ExecuteTemplate(w, "index.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	// 渲染首页模板
+	b, _ := json.Marshal(data)
+	log.Printf("======================================================")
+	log.Printf(string(b))
+	log.Printf("======================================================")
+	return
 }
 
 // searchHandler 处理搜索页面请求
@@ -468,7 +467,7 @@ func (s *Server) apiAddTorrentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var torrent models.Torrent
+	var torrent model.Torrent
 	if err := json.NewDecoder(r.Body).Decode(&torrent); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "无效的请求数据"})

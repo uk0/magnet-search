@@ -14,7 +14,7 @@ import (
 func main() {
 	// 命令行参数
 	dbURL := flag.String("db", "mongodb://root:123@mongo-1:27011,mongo-1:27012,mongo-1:27013/?replicaSet=rs", "mongo_db_url")
-	dhtAddr := flag.String("dht", "0.0.0.0:6881", "DHT监听地址")
+	dhtAddr := flag.String("dht", ":26881", "DHT监听地址")
 	concurrency := flag.Int("concurrency", 10, "元数据获取并发数")
 	maxProcs := flag.Int("max-procs", 0, "最大处理器核心数，0表示使用所有可用核心")
 	flag.Parse()

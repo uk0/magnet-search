@@ -5,7 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"log"
 	"magnet-search/internal/database"
-	"magnet-search/internal/models"
+	"magnet-search/internal/model"
 	"magnet-search/internal/server"
 	"os"
 	"os/signal"
@@ -75,7 +75,7 @@ func addTestData(db *database.DB) error {
 	log.Println("正在添加测试数据...")
 
 	// 示例数据
-	testTorrents := []models.Torrent{
+	testTorrents := []model.Torrent{
 		{
 			Title:       "Ubuntu 22.04 Desktop (64bit)",
 			InfoHash:    "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",

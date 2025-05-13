@@ -2,11 +2,12 @@ package crawler
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"magnet-search/internal/database"
 	"magnet-search/internal/logger"
-	"magnet-search/internal/models"
+	"magnet-search/internal/model"
 	"net/url"
 	"strings"
 	"sync"
@@ -21,7 +22,7 @@ type Crawler struct {
 	logger       *logger.Logger
 	dhtCrawler   *dht.DHT
 	dhtWire      *dht.Wire
-	metadataChan chan *TorrentMetadata
+	metadataChan chan *model.TorrentMetadata
 	filter       *KeywordFilter
 	running      bool
 	wg           sync.WaitGroup
@@ -36,7 +37,7 @@ func NewCrawler(db *database.DB, listenAddr string, metadataConcurrency int) (*C
 	}
 
 	// 创建元数据通道
-	metadataChan := make(chan *TorrentMetadata, 100)
+	metadataChan := make(chan *model.TorrentMetadata, 1024)
 
 	// 创建过滤器并添加默认关键词
 	filter := NewKeywordFilter()
@@ -48,30 +49,7 @@ func NewCrawler(db *database.DB, listenAddr string, metadataConcurrency int) (*C
 
 	// 创建 DHT 爬虫配置
 	dhtConfig := dht.NewCrawlConfig()
-	dhtConfig.RefreshNodeNum = 512
-	dhtConfig.CheckKBucketPeriod = time.Second * 30
-
-	// 设置引导节点
-	dhtConfig.PrimeNodes = []string{
-		"router.bittorrent.com:6881",
-		"dht.transmissionbt.com:6881",
-		"router.utorrent.com:6881",
-		"dht.libtorrent.org:25401",
-		"dht.aelitis.com:6881",
-		"router.silotis.us:6881",    // 新增的活跃节点
-		"dht.monitorrent.com:6881",  // 新增的活跃节点
-		"dht.bootjav.com:6881",      // 亚洲区域活跃节点
-		"router.bitcomet.com:6881",  // BitComet客户端DHT节点，国内使用较多
-		"dht.cyberyon.com:6881",     // 亚太地区活跃节点
-		"dht.bluedot.org:6881",      // 多区域连通性良好
-		"router.magnets.im:6881",    // 磁力链相关资源节点
-		"dht.eastasia.one:6881",     // 东亚优化节点
-		"router.c-base.org:6881",    // 稳定的欧洲节点，但对中国连通性较好
-		"dht.pacific-node.com:6881", // 太平洋区域节点，对亚洲友好
-		"dht.acgtracker.com:6881",   // 动漫资源相关，亚洲连通性好
-		"router.asiandht.com:6881",  // 亚洲优化节点
-	}
-
+	dhtConfig.Address = listenAddr
 	// 解析监听地址获取端口
 	host, port, err := parseListenAddr(listenAddr)
 	if err != nil {
@@ -93,10 +71,7 @@ func NewCrawler(db *database.DB, listenAddr string, metadataConcurrency int) (*C
 
 	// 设置 DHT 的回调函数
 	dhtConfig.OnAnnouncePeer = func(infoHash, ip string, port int) {
-		// 只有在爬虫运行中才请求元数据
-		log.Println("发现对等点:", infoHash, "IP:", ip, "端口:", port)
 		if crawler.running {
-			log.Println("请求元数据:", infoHash, "IP:", ip, "端口:", port)
 			// 请求获取元数据
 			crawler.dhtWire.Request([]byte(infoHash), ip, port)
 		}
@@ -233,6 +208,9 @@ func (c *Crawler) processMetadata() {
 			continue
 		}
 
+		b, _ := json.Marshal(metadata)
+		log.Println("[processMetadata]----->转换后的元数据:", string(b))
+
 		// 转换为元数据对象
 		torrentMetadata, err := c.convertToTorrentMetadata(resp.InfoHash, metadata)
 		if err != nil {
@@ -294,17 +272,14 @@ func (c *Crawler) processMetadata() {
 }
 
 // convertToTorrentMetadata 将 DHT 库的元数据转换为我们的 TorrentMetadata 结构
-func (c *Crawler) convertToTorrentMetadata(infoHash []byte, metadata interface{}) (*TorrentMetadata, error) {
+func (c *Crawler) convertToTorrentMetadata(infoHash []byte, metadata interface{}) (*model.TorrentMetadata, error) {
 	info, ok := metadata.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("无效的元数据格式")
 	}
 
-	// 检查是否包含 info 字典
-	log.Println("元数据:", info)
-
 	// 创建元数据对象
-	result := &TorrentMetadata{
+	result := &model.TorrentMetadata{
 		InfoHash: infoHash,
 	}
 
@@ -353,12 +328,12 @@ func (c *Crawler) convertToTorrentMetadata(infoHash []byte, metadata interface{}
 		result.Length = int64(length)
 	} else if files, ok := info["files"].([]interface{}); ok {
 		// 多文件情况
-		result.Files = make([]TorrentFile, 0, len(files))
+		result.Files = make([]model.TorrentFile, 0, len(files))
 		var totalLength int64
 
 		for _, file := range files {
 			if fileDict, ok := file.(map[string]interface{}); ok {
-				var tf TorrentFile
+				var tf model.TorrentFile
 
 				// 处理长度
 				if length, ok := fileDict["length"].(int64); ok {
@@ -386,11 +361,14 @@ func (c *Crawler) convertToTorrentMetadata(infoHash []byte, metadata interface{}
 		result.Length = totalLength
 	}
 
+	b, _ := json.Marshal(result)
+	log.Println("[convertToTorrentMetadata]----->转换后的元数据:", string(b))
+
 	return result, nil
 }
 
 // convertMetadataToTorrent 将元数据转换为种子模型
-func convertMetadataToTorrent(metadata *TorrentMetadata, category string) *models.Torrent {
+func convertMetadataToTorrent(metadata *model.TorrentMetadata, category string) *model.Torrent {
 	// 构造磁力链接
 	magnetLink := "magnet:?xt=urn:btih:" + hex.EncodeToString(metadata.InfoHash)
 
@@ -416,7 +394,7 @@ func convertMetadataToTorrent(metadata *TorrentMetadata, category string) *model
 	}
 
 	// 创建种子记录
-	torrent := &models.Torrent{
+	torrent := &model.Torrent{
 		Title:       metadata.Name,
 		InfoHash:    hex.EncodeToString(metadata.InfoHash),
 		MagnetLink:  magnetLink,
@@ -430,6 +408,7 @@ func convertMetadataToTorrent(metadata *TorrentMetadata, category string) *model
 		Description: metadata.Comment,
 		Source:      "DHT",
 		Heat:        1, // 初始热度
+		Files:       metadata.Files,
 	}
 
 	// 如果上传日期无效，使用当前时间

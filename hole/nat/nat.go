@@ -212,17 +212,7 @@ func getDefaultGateway() (net.IP, error) {
 		}
 		fmt.Printf("%d. %s  %s\n", i+1, gw.String(), status)
 	}
-	// 简化起见，我们假设网关是本地IP的前三个段加上.1
-	ip, err := getLocalIP()
-	if err != nil {
-		return nil, err
-	}
-
-	ipParts := ip.To4()
-	ipParts[3] = 1 // 假设网关是x.x.x.1
-
-	log.Printf("假设的默认网关: %s", ipParts.String())
-	return ipParts, nil
+	return gateway_ip, nil
 }
 
 // Refresh 刷新端口映射

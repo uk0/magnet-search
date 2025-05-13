@@ -1,0 +1,117 @@
+{{template "layout.html" .}}
+
+{{define "title"}}{{.Title}}{{end}}
+
+{{define "content"}}
+<div class="container">
+    <div class="search-header">
+        <div class="search-form-container">
+            <form action="/search" method="get" class="search-form">
+                <input type="text" name="q" placeholder="输入关键词搜索..." value="{{.Query}}" required>
+                <button type="submit">搜索</button>
+            </form>
+        </div>
+
+        <div class="search-filters">
+            {{if .Query}}
+            <h2>搜索结果: {{.Query}}</h2>
+            {{else if .Category}}
+            <h2>分类: {{.Category}}</h2>
+            {{else}}
+            <h2>所有资源</h2>
+            {{end}}
+
+            <div class="filter-options">
+                <div class="filter-group">
+                    <label>分类:</label>
+                    <select id="category-filter" onchange="updateFilter('category', this.value)">
+                        <option value="">全部</option>
+                        {{range .Categories}}
+                        <option value="{{.Category}}" {{if eq .Category $.Category}}selected{{end}}>
+                            {{.Category}} ({{.Count}})
+                        </option>
+                        {{end}}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>排序:</label>
+                    <select id="sort-filter" onchange="updateFilter('sort', this.value)">
+                        <option value="upload_date" {{if eq .Sort "upload_date"}}selected{{end}}>上传日期</option>
+                        <option value="size" {{if eq .Sort "size"}}selected{{end}}>文件大小</option>
+                        <option value="seeds" {{if eq .Sort "seeds"}}selected{{end}}>做种数</option>
+                        <option value="downloads" {{if eq .Sort "downloads"}}selected{{end}}>下载次数</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>顺序:</label>
+                    <select id="order-filter" onchange="updateFilter('order', this.value)">
+                        <option value="DESC" {{if eq .Order "DESC"}}selected{{end}}>降序</option>
+                        <option value="ASC" {{if eq .Order "ASC"}}selected{{end}}>升序</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="search-results">
+        {{if not .Result.Torrents}}
+        <div class="no-results">
+            <p>没有找到相关资源，请尝试其他关键词</p>
+        </div>
+        {{else}}
+        <div class="result-stats">
+            找到 {{.Result.Total}} 条结果，显示第 {{.Result.Page}} 页，共 {{.Result.TotalPage}} 页
+        </div>
+
+        <div class="torrent-list">
+            {{range .Result.Torrents}}
+            <div class="torrent-item">
+                <div class="torrent-title">
+                    <a href="{{.MagnetLink}}" title="{{.Title}}">{{.Title}}</a>
+                </div>
+                <div class="torrent-info">
+                    <span class="torrent-category">{{.Category}}</span>
+                    <span class="torrent-size">{{formatSize .Size}}</span>
+                    <span class="torrent-date">{{formatDate .UploadDate}}</span>
+                    <span class="torrent-seeds">做种: {{.Seeds}}</span>
+                    <span class="torrent-peers">连接: {{.Peers}}</span>
+                </div>
+                {{if .Description}}
+                <div class="torrent-description">{{.Description}}</div>
+                {{end}}
+                <div class="torrent-actions">
+                    <a href="{{.MagnetLink}}" class="magnet-link" title="复制磁力链接">
+                        <i class="icon-magnet"></i> 磁力链接
+                    </a>
+                    <span class="info-hash">Hash: {{.InfoHash}}</span>
+                    <span class="file-count">文件数: {{.FileCount}}</span>
+                </div>
+            </div>
+            {{end}}
+        </div>
+
+        {{if gt .Result.TotalPage 1}}
+        <div class="pagination">
+            {{if gt .Page 1}}
+            <a href="/search?q={{.Query}}&category={{.Category}}&sort={{.Sort}}&order={{.Order}}&page={{.Prev}}" class="pagination-item">上一页</a>
+            {{end}}
+
+            {{range .Pages}}
+            {{if eq .Type "page"}}
+            <a href="/search?q={{$.Query}}&category={{$.Category}}&sort={{$.Sort}}&order={{$.Order}}&page={{.Number}}" class="pagination-item {{if .Current}}active{{end}}">{{.Number}}</a>
+            {{else}}
+            <span class="pagination-item">...</span>
+            {{end}}
+            {{end}}
+
+            {{if lt (printf "%d" .Page) (printf "%d" .TotalPages)}}
+            <a href="/search?q={{.Query}}&category={{.Category}}&sort={{.Sort}}&order={{.Order}}&page={{.Next}}" class="pagination-item">下一页</a>
+            {{end}}
+        </div>
+        {{end}}
+        {{end}}
+    </div>
+</div>
+{{end}}

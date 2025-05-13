@@ -1,0 +1,147 @@
+<!-- 添加统计图表区域 -->
+<div class="stats-charts">
+    <h2>数据统计</h2>
+    <div class="chart-container">
+        <div class="chart" id="category-chart"></div>
+        <div class="chart" id="daily-chart"></div>
+    </div>
+</div>
+
+<!-- 添加日志查看区域 -->
+<div class="logs-section">
+    <h2>爬虫日志</h2>
+    <div class="log-controls">
+        <select id="log-date">
+            <!-- 这里会通过JavaScript动态填充最近的日志日期 -->
+        </select>
+        <button id="refresh-logs">刷新</button>
+    </div>
+    <div class="log-container">
+        <pre id="log-content">点击刷新按钮加载日志...</pre>
+    </div>
+</div>
+
+<script>
+    // 加载统计图表
+    function loadCharts() {
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // 分类饼图
+                    const categoryLabels = Object.keys(data.categories);
+                    const categoryValues = Object.values(data.categories);
+
+                    new Chart(document.getElementById('category-chart'), {
+                        type: 'pie',
+                        data: {
+                            labels: categoryLabels,
+                            datasets: [{
+                                data: categoryValues,
+                                backgroundColor: [
+                                    '#ff6384', '#36a2eb', '#ffce56', '#4bc0c0',
+                                    '#9966ff', '#ff9f40', '#4dc9f6', '#f67019',
+                                    '#f53794', '#537bc4'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: '资源分类统计'
+                                }
+                            }
+                        }
+                    });
+
+                    // 获取每日数据统计
+                    fetch('/api/daily-stats')
+                        .then(response => response.json())
+                        .then(dailyData => {
+                            if (dailyData.status === 'success') {
+                                const dates = dailyData.data.map(d => d.date);
+                                const counts = dailyData.data.map(d => d.count);
+
+                                new Chart(document.getElementById('daily-chart'), {
+                                    type: 'line',
+                                    data: {
+                                        labels: dates,
+                                        datasets: [{
+                                            label: '每日新增资源',
+                                            data: counts,
+                                            borderColor: '#36a2eb',
+                                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                            tension: 0.1
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            title: {
+                                                display: true,
+                                                text: '每日资源增长趋势'
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                }
+            });
+    }
+
+    // 加载日志文件列表
+    function loadLogDates() {
+        fetch('/api/log-dates')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const select = document.getElementById('log-date');
+                    select.innerHTML = '';
+
+                    data.dates.forEach(date => {
+                        const option = document.createElement('option');
+                        option.value = date;
+                        option.textContent = date;
+                        select.appendChild(option);
+                    });
+                }
+            });
+    }
+
+    // 加载指定日期的日志
+    function loadLog(date) {
+        fetch(`/api/logs?date=${date}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('log-content').textContent = data.content;
+                } else {
+                    document.getElementById('log-content').textContent = '加载日志失败: ' + data.message;
+                }
+            })
+            .catch(error => {
+                document.getElementById('log-content').textContent = '请求错误: ' + error;
+            });
+    }
+
+    // 绑定刷新日志按钮事件
+    document.getElementById('refresh-logs').addEventListener('click', function() {
+        const date = document.getElementById('log-date').value;
+        if (date) {
+            loadLog(date);
+        } else {
+            alert('请选择日志日期');
+        }
+    });
+
+    // 页面加载时初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        loadCharts();
+        loadLogDates();
+    });
+</script>

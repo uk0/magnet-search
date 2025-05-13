@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{block "title" .}}磁力搜索引擎{{end}}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="/static/favicon.ico">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+
+</head>
+<body>
+<header>
+    <div class="header-container">
+        <div class="logo">
+            <a href="/">磁力搜索</a>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="/">首页</a></li>
+                <li><a href="/admin">管理</a></li>
+                <li><a href="/search">浏览</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<main>
+    {{block "content" .}}{{end}}
+</main>
+
+<footer>
+    <div class="footer-container">
+        <p>&copy; 2025 磁力搜索引擎 - 仅提供磁力链接搜索，不存储任何资源</p>
+    </div>
+</footer>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>
